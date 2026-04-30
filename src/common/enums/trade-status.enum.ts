@@ -1,0 +1,7 @@
+export enum TradeStatus {
+  PENDING = 'PENDING',
+  LOCKED = 'LOCKED',
+  CONFIRMED = 'CONFIRMED',
+  RELEASED = 'RELEASED',
+  CANCELLED = 'CANCELLED',
+}

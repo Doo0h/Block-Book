@@ -1,0 +1,26 @@
+import { IsEthereumAddress, IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+
+export class CreateUserDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsString()
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+
+  @IsEthereumAddress()
+  walletAddress: string;
+
+  @IsString()
+  @IsNotEmpty()
+  department: string;
+
+  @IsNumber()
+  @Min(1)
+  grade: number;
+}
