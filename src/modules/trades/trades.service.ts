@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { BookStatus } from 'src/common/enums/book-status.enum';
-import { TradeStatus } from 'src/common/enums/trade-status.enum';
+import { BookStatus } from '../../common/enums/book-status.enum';
+import { TradeStatus } from '../../common/enums/trade-status.enum';
 import { BooksService } from '../books/books.service';
 import { UsersService } from '../users/users.service';
 import { CreateTradeDto } from './dto/create-trade.dto';

@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, SchemaTypes, Types } from 'mongoose';
-import { ActivityType } from 'src/common/enums/activity-type.enum';
-import { TokenTransactionType } from 'src/common/enums/token-transaction-type.enum';
+import { ActivityType } from '../../../common/enums/activity-type.enum';
+import { TokenTransactionType } from '../../../common/enums/token-transaction-type.enum';
 
 export type TokenTransactionDocument = HydratedDocument<TokenTransaction>;
 

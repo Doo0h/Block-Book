@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { TokenTransactionType } from 'src/common/enums/token-transaction-type.enum';
+import { TokenTransactionType } from '../../common/enums/token-transaction-type.enum';
 import { UsersService } from '../users/users.service';
 import { RewardTokenDto } from './dto/reward-token.dto';
 import { UseTokenDto } from './dto/use-token.dto';
