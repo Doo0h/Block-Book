@@ -137,3 +137,8 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Ethereum & Geth Data (절대 깃허브에 올라가면 안 되는 파일들)
+data/geth/
+data/keystore/
+geth.ipc
