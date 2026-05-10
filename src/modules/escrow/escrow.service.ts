@@ -3,17 +3,23 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Contract, JsonRpcProvider, Wallet } from 'ethers';
 import { Model } from 'mongoose';
-import { BookStatus } from 'src/common/enums/book-status.enum';
-import { TradeStatus } from 'src/common/enums/trade-status.enum';
+import { BookStatus } from '../../common/enums/book-status.enum';
+import { TradeStatus } from '../../common/enums/trade-status.enum';
 import { BooksService } from '../books/books.service';
 import { TradesService } from '../trades/trades.service';
 import { Escrow, EscrowDocument } from './schemas/escrow.schema';
 
 const ESCROW_ABI = [
-  'function lockFunds(uint256 tradeId) external payable returns (bool)',
+  'function lockFunds(uint256 tradeId, address seller) external payable returns (bool)',
   'function confirmDelivery(uint256 tradeId) external returns (bool)',
   'function releaseFunds(uint256 tradeId) external returns (bool)',
 ];
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+type PopulatedWalletUser = {
+  walletAddress: string;
+};
 
 @Injectable()
 export class EscrowService {
@@ -31,7 +37,9 @@ export class EscrowService {
       throw new BadRequestException('Only pending trades can be locked.');
     }
 
-    const txHash = await this.sendEscrowTransaction('lockFunds', tradeId, trade.offeredPrice);
+    const buyer = trade.buyerId as unknown as PopulatedWalletUser;
+    const seller = trade.sellerId as unknown as PopulatedWalletUser;
+    const txHash = await this.sendEscrowTransaction('lockFunds', tradeId, trade.offeredPrice, seller.walletAddress);
     const contractAddress = this.configService.get<string>('ESCROW_CONTRACT_ADDRESS') ?? '';
 
     await this.escrowModel.findOneAndUpdate(
@@ -39,8 +47,8 @@ export class EscrowService {
       {
         tradeId,
         amount: trade.offeredPrice,
-        buyerWalletAddress: trade.buyerId.walletAddress,
-        sellerWalletAddress: trade.sellerId.walletAddress,
+        buyerWalletAddress: buyer.walletAddress,
+        sellerWalletAddress: seller.walletAddress,
         contractAddress,
         lockTxHash: txHash,
       },
@@ -109,23 +117,31 @@ export class EscrowService {
     method: 'lockFunds' | 'confirmDelivery' | 'releaseFunds',
     tradeId: string,
     amount?: number,
+    sellerWalletAddress?: string,
   ) {
     const rpcUrl = this.configService.get<string>('BLOCKCHAIN_RPC_URL');
     const contractAddress = this.configService.get<string>('ESCROW_CONTRACT_ADDRESS');
     const privateKey = this.configService.get<string>('PLATFORM_PRIVATE_KEY');
 
-    if (!rpcUrl || !contractAddress || !privateKey) {
+    if (
+      !rpcUrl ||
+      !contractAddress ||
+      contractAddress === ZERO_ADDRESS ||
+      !privateKey ||
+      privateKey === 'replace_with_private_key'
+    ) {
       return `mock-tx-${method}-${tradeId}-${Date.now()}`;
     }
 
     const provider = new JsonRpcProvider(rpcUrl);
     const wallet = new Wallet(privateKey, provider);
     const contract = new Contract(contractAddress, ESCROW_ABI, wallet);
+    const blockchainTradeId = BigInt(`0x${tradeId}`);
 
     const tx =
       method === 'lockFunds'
-        ? await contract[method](tradeId, { value: BigInt(amount ?? 0) })
-        : await contract[method](tradeId);
+        ? await contract[method](blockchainTradeId, sellerWalletAddress, { value: BigInt(amount ?? 0) })
+        : await contract[method](blockchainTradeId);
 
     await tx.wait();
     return tx.hash as string;

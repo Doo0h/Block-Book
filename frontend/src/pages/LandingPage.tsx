@@ -1,7 +1,5 @@
 import { BookOpen, Coins, ShieldCheck } from 'lucide-react';
-import { BookCard } from '../components/book-card';
 import { BlockBookShell } from '../components/blockbook-shell';
-import { featuredBooks } from '../data/mock';
 
 const features = [
   {
@@ -17,7 +15,7 @@ const features = [
   {
     icon: Coins,
     title: '토큰 보상',
-    description: '교내 활동 참여로 받은 토큰을 혜택에 사용합니다.',
+    description: '교내 활동 참여로 받은 토큰을 혜택에 사용할 수 있습니다.',
   },
 ];
 
@@ -26,16 +24,6 @@ export function LandingPage() {
     <BlockBookShell
       title="전공서적 거래를 더 안전하고 간단하게"
       subtitle="BlockBook은 대학생을 위한 전공서적 거래 앱입니다. 신뢰 가능한 거래 흐름과 쉬운 탐색 경험에 집중했습니다."
-      actions={
-        <div className="grid grid-cols-2 gap-3">
-          <button className="rounded-2xl bg-[#bdd6ff] px-4 py-3 text-sm font-semibold text-[#466fcb]">
-            책 찾기
-          </button>
-          <button className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-[#6d84b4] shadow-card">
-            책 등록
-          </button>
-        </div>
-      }
     >
       <section className="space-y-5">
         <div className="rounded-[32px] border border-[#dbe6f5] bg-[linear-gradient(180deg,#eef5ff_0%,#f8fbff_100%)] px-6 py-6 text-[#314158] shadow-card">
@@ -83,21 +71,6 @@ export function LandingPage() {
             );
           })}
         </div>
-
-        <section className="rounded-[32px] border border-[#dbe6f5] bg-white p-5 shadow-card">
-          <div className="flex items-end justify-between">
-            <div>
-              <div className="text-sm font-semibold text-[#7ca1ef]">인기 도서</div>
-              <h3 className="mt-1 text-xl font-semibold tracking-tight text-[#314158]">이번 주 많이 찾는 책</h3>
-            </div>
-            <button className="text-sm font-semibold text-[#7b8ea8]">전체</button>
-          </div>
-          <div className="mt-4 space-y-4">
-            {featuredBooks.map((book) => (
-              <BookCard key={book.id} {...book} />
-            ))}
-          </div>
-        </section>
       </section>
     </BlockBookShell>
   );

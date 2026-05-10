@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, SchemaTypes, Types } from 'mongoose';
-import { BookCondition } from 'src/common/enums/book-condition.enum';
-import { BookStatus } from 'src/common/enums/book-status.enum';
+import { BookCondition } from '../../../common/enums/book-condition.enum';
+import { BookStatus } from '../../../common/enums/book-status.enum';
 
 export type BookDocument = HydratedDocument<Book>;
 
@@ -36,6 +36,12 @@ export class Book {
 
   @Prop({ enum: BookStatus, default: BookStatus.AVAILABLE })
   status: BookStatus;
+
+  @Prop()
+  blockchainBookId?: string;
+
+  @Prop()
+  blockchainTxHash?: string;
 }
 
 export const BookSchema = SchemaFactory.createForClass(Book);

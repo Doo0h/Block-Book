@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsEnum, IsMongoId, IsNumber, IsOptional, IsString, Min } from 'class-validator';
-import { ActivityType } from 'src/common/enums/activity-type.enum';
+import { ActivityType } from '../../../common/enums/activity-type.enum';
 
 export class RewardTokenDto {
   @IsMongoId()

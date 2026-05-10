@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, SchemaTypes, Types } from 'mongoose';
-import { TradeStatus } from 'src/common/enums/trade-status.enum';
+import { TradeStatus } from '../../../common/enums/trade-status.enum';
 
 export type TradeDocument = HydratedDocument<Trade>;
 

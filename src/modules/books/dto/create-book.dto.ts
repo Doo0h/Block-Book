@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsArray, IsEnum, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
-import { BookCondition } from 'src/common/enums/book-condition.enum';
+import { BookCondition } from '../../../common/enums/book-condition.enum';
 
 export class CreateBookDto {
   @IsString()
