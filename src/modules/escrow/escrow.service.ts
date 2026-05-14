@@ -39,8 +39,8 @@ export class EscrowService {
       {
         tradeId,
         amount: trade.offeredPrice,
-        buyerWalletAddress: trade.buyerId.walletAddress,
-        sellerWalletAddress: trade.sellerId.walletAddress,
+        buyerWalletAddress: (trade.buyerId as any).walletAddress,
+        sellerWalletAddress: (trade.sellerId as any).walletAddress,
         contractAddress,
         lockTxHash: txHash,
       },
