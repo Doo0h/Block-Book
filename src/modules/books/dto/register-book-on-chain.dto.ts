@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import { IsEthereumAddress, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class RegisterBookOnChainDto {
   @Type(() => Number)
@@ -18,4 +18,17 @@ export class RegisterBookOnChainDto {
   @IsString()
   @IsNotEmpty()
   status: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  blockchainTxHash?: string;
+
+  @IsOptional()
+  @IsEthereumAddress()
+  contractAddress?: string;
+
+  @IsOptional()
+  @IsEthereumAddress()
+  ownerAddress?: string;
 }

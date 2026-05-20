@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { TokenTransactionType } from '../../common/enums/token-transaction-type.enum';
+import { PreviewTokenDiscountDto } from './dto/preview-token-discount.dto';
 import { UsersService } from '../users/users.service';
 import { RewardTokenDto } from './dto/reward-token.dto';
 import { UseTokenDto } from './dto/use-token.dto';
@@ -9,6 +10,8 @@ import { TokenTransaction, TokenTransactionDocument } from './schemas/token-tran
 
 @Injectable()
 export class TokensService {
+  private readonly tokenValueWon = 100;
+
   constructor(
     @InjectModel(TokenTransaction.name)
     private readonly tokenTransactionModel: Model<TokenTransactionDocument>,
@@ -40,6 +43,21 @@ export class TokensService {
     });
 
     return { user, transaction };
+  }
+
+  previewDiscount(previewTokenDiscountDto: PreviewTokenDiscountDto) {
+    const discountWon = Math.min(
+      previewTokenDiscountDto.bookPrice,
+      previewTokenDiscountDto.tokenAmount * this.tokenValueWon,
+    );
+
+    return {
+      bookPrice: previewTokenDiscountDto.bookPrice,
+      tokenAmount: previewTokenDiscountDto.tokenAmount,
+      tokenValueWon: this.tokenValueWon,
+      discountWon,
+      finalPrice: previewTokenDiscountDto.bookPrice - discountWon,
+    };
   }
 
   async history(userId: string) {

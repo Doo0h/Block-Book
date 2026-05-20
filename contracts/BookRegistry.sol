@@ -1,26 +1,33 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 contract BookRegistry {
     address public admin;
 
-    // 도서 정보를 담는 구조체
     struct Book {
         string title;
         string author;
         string currentStatus;
         address currentOwner;
-        uint lastPrice;
-        uint lastUpdated;
+        uint256 lastPrice;
+        uint256 lastUpdated;
         bool exists;
     }
 
-    // 도서 ID별 정보를 저장하는 매핑 
-    mapping(uint => Book) public books;
+    mapping(uint256 => Book) public books;
+    mapping(address => bool) public operators;
 
-    // 관리자만 실행 가능하도록 제한 
+    event BookRegistered(uint256 indexed bookId, address indexed owner, string title, string author, string status);
+    event BookTransferred(uint256 indexed bookId, address indexed previousOwner, address indexed newOwner, uint256 price);
+    event OperatorUpdated(address indexed operator, bool allowed);
+
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin can call this function");
+        _;
+    }
+
+    modifier onlyAdminOrOperator() {
+        require(msg.sender == admin || operators[msg.sender], "Only admin or operator can call this function");
         _;
     }
 
@@ -28,40 +35,52 @@ contract BookRegistry {
         admin = msg.sender;
     }
 
-    // 1. 사용자가 직접 도서 정보를 등록하는 함수
-    function registerBook(
-        uint _id,
-        string memory _title,
-        string memory _author,
-        string memory _status
-    ) public {
-        require(!books[_id].exists, "Book already exists");
-        require(bytes(_title).length > 0, "Title cannot be empty");
-
-        books[_id] = Book(
-            _title,
-            _author,
-            _status,
-            msg.sender,
-            0,
-            block.timestamp,
-            true
-        );
+    function setOperator(address operator, bool allowed) external onlyAdmin {
+        operators[operator] = allowed;
+        emit OperatorUpdated(operator, allowed);
     }
 
-    // 2. 거래 완료 후 플랫폼 관리자가 거래 이력(소유자 변경)을 추가하는 함수
-    function addTradeHistory(
-        uint _id,
-        address _newOwner,
-        uint _price,
-        string memory _status
-    ) public onlyAdmin {
-        require(books[_id].exists, "Book does not exist");
-        require(_newOwner != address(0), "Invalid owner address");
+    function registerBook(uint256 id, string memory title, string memory author, string memory status) public {
+        require(!books[id].exists, "Book already exists");
+        require(bytes(title).length > 0, "Title cannot be empty");
 
-        books[_id].currentOwner = _newOwner;
-        books[_id].currentStatus = _status;
-        books[_id].lastPrice = _price;
-        books[_id].lastUpdated = block.timestamp;
+        books[id] = Book({
+            title: title,
+            author: author,
+            currentStatus: status,
+            currentOwner: msg.sender,
+            lastPrice: 0,
+            lastUpdated: block.timestamp,
+            exists: true
+        });
+
+        emit BookRegistered(id, msg.sender, title, author, status);
+    }
+
+    function transferBook(uint256 id, address newOwner, uint256 price, string memory status) external {
+        require(books[id].exists, "Book does not exist");
+        require(newOwner != address(0), "Invalid owner address");
+        require(msg.sender == books[id].currentOwner || msg.sender == admin || operators[msg.sender], "Not authorized");
+
+        address previousOwner = books[id].currentOwner;
+        books[id].currentOwner = newOwner;
+        books[id].currentStatus = status;
+        books[id].lastPrice = price;
+        books[id].lastUpdated = block.timestamp;
+
+        emit BookTransferred(id, previousOwner, newOwner, price);
+    }
+
+    function addTradeHistory(uint256 id, address newOwner, uint256 price, string memory status) public onlyAdminOrOperator {
+        require(books[id].exists, "Book does not exist");
+        require(newOwner != address(0), "Invalid owner address");
+
+        address previousOwner = books[id].currentOwner;
+        books[id].currentOwner = newOwner;
+        books[id].currentStatus = status;
+        books[id].lastPrice = price;
+        books[id].lastUpdated = block.timestamp;
+
+        emit BookTransferred(id, previousOwner, newOwner, price);
     }
 }

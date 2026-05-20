@@ -27,4 +27,4 @@ npm run dev
 - `/trades/current`
 - `/mypage`
 
-메인 엔트리는 `app/page.tsx`이며, 디자인 컴포넌트는 `src/pages`와 `src/components`에 분리되어 있습니다.
+메인 엔트리는 `src/app/page.tsx`이며, 디자인 컴포넌트는 `src/views`와 `src/components`에 분리되어 있습니다.

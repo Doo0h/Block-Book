@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { PreviewTokenDiscountDto } from './dto/preview-token-discount.dto';
 import { RewardTokenDto } from './dto/reward-token.dto';
 import { UseTokenDto } from './dto/use-token.dto';
 import { TokensService } from './tokens.service';
@@ -15,6 +16,11 @@ export class TokensController {
   @Post('use')
   use(@Body() useTokenDto: UseTokenDto) {
     return this.tokensService.use(useTokenDto);
+  }
+
+  @Post('preview-discount')
+  previewDiscount(@Body() previewTokenDiscountDto: PreviewTokenDiscountDto) {
+    return this.tokensService.previewDiscount(previewTokenDiscountDto);
   }
 
   @Get('history/:userId')

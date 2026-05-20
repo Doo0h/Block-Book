@@ -46,12 +46,15 @@ export class BooksService {
 
   async registerOnChain(registerBookOnChainDto: RegisterBookOnChainDto) {
     const blockchainBookId = String(registerBookOnChainDto.id);
-    const blockchainTxHash = await this.registerBookOnChain(
-      blockchainBookId,
-      registerBookOnChainDto.title,
-      registerBookOnChainDto.author,
-      registerBookOnChainDto.status,
-    );
+    const contractAddress = this.configService.get<string>('BOOK_REGISTRY_CONTRACT_ADDRESS');
+    const blockchainTxHash =
+      registerBookOnChainDto.blockchainTxHash ??
+      (await this.registerBookOnChain(
+        blockchainBookId,
+        registerBookOnChainDto.title,
+        registerBookOnChainDto.author,
+        registerBookOnChainDto.status,
+      ));
 
     return this.onChainBookModel.create({
       blockchainBookId: registerBookOnChainDto.id,
@@ -59,7 +62,8 @@ export class BooksService {
       author: registerBookOnChainDto.author,
       status: registerBookOnChainDto.status,
       blockchainTxHash,
-      ownerAddress: this.configService.get<string>('PLATFORM_WALLET_ADDRESS'),
+      contractAddress: registerBookOnChainDto.contractAddress ?? contractAddress,
+      ownerAddress: registerBookOnChainDto.ownerAddress ?? this.configService.get<string>('PLATFORM_WALLET_ADDRESS'),
     });
   }
 

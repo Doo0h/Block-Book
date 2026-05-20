@@ -12,6 +12,7 @@ type OnChainBook = {
   author: string;
   status: string;
   blockchainTxHash?: string;
+  contractAddress?: string;
   ownerAddress?: string;
 };
 
@@ -53,6 +54,7 @@ export function BookListPage() {
           book.author,
           book.status,
           book.ownerAddress ?? '',
+          book.contractAddress ?? '',
           book.blockchainTxHash ?? '',
         ]
           .join(' ')
@@ -64,7 +66,7 @@ export function BookListPage() {
   return (
     <BlockBookShell
       title="도서"
-      subtitle="BookRegistry에 등록한 도서 정보를 확인합니다."
+      subtitle="BookRegistry에 등록된 도서 정보와 저장된 트랜잭션 기록을 확인합니다."
       actions={
         <Link
           href="/books/register"
@@ -81,7 +83,7 @@ export function BookListPage() {
           <input
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
-            placeholder="Book ID, 도서명, 저자, 상태 검색"
+            placeholder="Book ID, 제목, 지갑주소, 계약주소 검색"
             className="min-w-0 flex-1 bg-transparent text-sm text-[#314158] outline-none placeholder:text-[#9bb0cb]"
           />
         </div>
@@ -126,12 +128,13 @@ export function BookListPage() {
 
             <div className="mt-4 space-y-2 break-all rounded-2xl bg-[#f7faff] p-3 text-xs leading-5 text-[#6f829b]">
               <div>Owner: {book.ownerAddress || '-'}</div>
+              <div>Contract: {book.contractAddress || '-'}</div>
               <div>Tx: {book.blockchainTxHash || '-'}</div>
             </div>
 
             <div className="mt-3 flex items-center gap-1 text-xs font-semibold text-[#5b82df]">
               <ExternalLink className="h-3.5 w-3.5" />
-              Remix books({book.blockchainBookId})에서 온체인 값 확인
+              Remix books({book.blockchainBookId})에서 같은 값을 확인
             </div>
           </article>
         ))}
