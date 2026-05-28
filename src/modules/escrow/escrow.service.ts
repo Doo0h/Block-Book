@@ -8,6 +8,9 @@ import { TradeStatus } from '../../common/enums/trade-status.enum';
 import { BooksService } from '../books/books.service';
 import { TradesService } from '../trades/trades.service';
 import { Escrow, EscrowDocument } from './schemas/escrow.schema';
+import { ConfirmOnChainEscrowDto } from './dto/confirm-on-chain-escrow.dto';
+import { CreateOnChainEscrowDto } from './dto/create-on-chain-escrow.dto';
+import { OnChainEscrow, OnChainEscrowDocument } from './schemas/on-chain-escrow.schema';
 
 const ESCROW_ABI = [
   'function lockFunds(uint256 tradeId, address seller) external payable returns (bool)',
@@ -25,6 +28,7 @@ type PopulatedWalletUser = {
 export class EscrowService {
   constructor(
     @InjectModel(Escrow.name) private readonly escrowModel: Model<EscrowDocument>,
+    @InjectModel(OnChainEscrow.name) private readonly onChainEscrowModel: Model<OnChainEscrowDocument>,
     private readonly tradesService: TradesService,
     private readonly booksService: BooksService,
     private readonly configService: ConfigService,
@@ -111,6 +115,40 @@ export class EscrowService {
     }
 
     return escrow;
+  }
+
+  async createOnChainLock(createOnChainEscrowDto: CreateOnChainEscrowDto) {
+    return this.onChainEscrowModel.findOneAndUpdate(
+      { tradeId: createOnChainEscrowDto.tradeId },
+      {
+        ...createOnChainEscrowDto,
+        status: TradeStatus.LOCKED,
+        tokenUsed: createOnChainEscrowDto.tokenUsed ?? 0,
+        discountAmount: createOnChainEscrowDto.discountAmount ?? 0,
+      },
+      { upsert: true, new: true },
+    );
+  }
+
+  async confirmOnChainLock(tradeId: number, confirmOnChainEscrowDto: ConfirmOnChainEscrowDto) {
+    const escrow = await this.onChainEscrowModel.findOneAndUpdate(
+      { tradeId },
+      {
+        status: TradeStatus.CONFIRMED,
+        confirmTxHash: confirmOnChainEscrowDto.confirmTxHash,
+      },
+      { new: true },
+    );
+
+    if (!escrow) {
+      throw new NotFoundException('On-chain escrow record not found.');
+    }
+
+    return escrow;
+  }
+
+  async findOnChainEscrows() {
+    return this.onChainEscrowModel.find().sort({ createdAt: -1 });
   }
 
   private async sendEscrowTransaction(

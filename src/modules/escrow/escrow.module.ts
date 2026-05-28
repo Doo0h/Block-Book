@@ -4,13 +4,17 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { BooksModule } from '../books/books.module';
 import { TradesModule } from '../trades/trades.module';
 import { Escrow, EscrowSchema } from './schemas/escrow.schema';
+import { OnChainEscrow, OnChainEscrowSchema } from './schemas/on-chain-escrow.schema';
 import { EscrowController } from './escrow.controller';
 import { EscrowService } from './escrow.service';
 
 @Module({
   imports: [
     ConfigModule,
-    MongooseModule.forFeature([{ name: Escrow.name, schema: EscrowSchema }]),
+    MongooseModule.forFeature([
+      { name: Escrow.name, schema: EscrowSchema },
+      { name: OnChainEscrow.name, schema: OnChainEscrowSchema },
+    ]),
     TradesModule,
     BooksModule,
   ],

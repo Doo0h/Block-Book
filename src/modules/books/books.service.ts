@@ -75,6 +75,8 @@ export class BooksService {
     const rpcUrl = this.configService.get<string>('BLOCKCHAIN_RPC_URL') ?? '';
     const walletAddress = this.configService.get<string>('PLATFORM_WALLET_ADDRESS') ?? '';
     const contractAddress = this.configService.get<string>('BOOK_REGISTRY_CONTRACT_ADDRESS') ?? '';
+    const escrowContractAddress = this.configService.get<string>('ESCROW_CONTRACT_ADDRESS') ?? '';
+    const bookTokenContractAddress = this.configService.get<string>('BOOK_TOKEN_CONTRACT_ADDRESS') ?? '';
 
     if (!rpcUrl || !walletAddress) {
       return {
@@ -82,6 +84,8 @@ export class BooksService {
         rpcUrl,
         walletAddress,
         contractAddress,
+        escrowContractAddress,
+        bookTokenContractAddress,
       };
     }
 
@@ -98,6 +102,8 @@ export class BooksService {
         rpcUrl,
         walletAddress,
         contractAddress,
+        escrowContractAddress,
+        bookTokenContractAddress,
         chainId: network.chainId.toString(),
         blockNumber,
         balanceEth: Number(balance) / 1e18,
@@ -108,6 +114,8 @@ export class BooksService {
         rpcUrl,
         walletAddress,
         contractAddress,
+        escrowContractAddress,
+        bookTokenContractAddress,
         error: error instanceof Error ? error.message : 'Failed to connect to blockchain RPC.',
       };
     }
