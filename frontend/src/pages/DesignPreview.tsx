@@ -17,7 +17,7 @@ export default function DesignPreview() {
     <div className="bg-slate-200">
       {sections.map((section) => (
         <section key={section.title} className="border-b border-slate-300">
-          <div className="sticky top-0 z-40 border-b border-slate-300 bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
+          <div className="border-b border-slate-300 bg-slate-950 px-4 py-3 text-sm font-semibold text-white">
             {section.title}
           </div>
           {section.component}

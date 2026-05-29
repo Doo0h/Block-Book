@@ -75,3 +75,5 @@ export function MyPage() {
     </BlockBookShell>
   );
 }
+
+export default MyPage;

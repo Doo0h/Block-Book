@@ -1,9 +1,20 @@
 import { Type } from 'class-transformer';
-import { IsMongoId, IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import {
+  IsEthereumAddress,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class UseTokenDto {
-  @IsMongoId()
-  userId: string;
+  @IsString()
+  @IsOptional()
+  userId?: string;
+
+  @IsEthereumAddress()
+  studentAddress: string;
 
   @Type(() => Number)
   @IsNumber()
@@ -13,4 +24,13 @@ export class UseTokenDto {
   @IsString()
   @IsNotEmpty()
   reason: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  bookPrice: number;
+
+  @IsString()
+  @IsNotEmpty()
+  bookId: string;
 }

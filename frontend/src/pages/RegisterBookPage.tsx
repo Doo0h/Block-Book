@@ -145,3 +145,5 @@ export function RegisterBookPage() {
     </BlockBookShell>
   );
 }
+
+export default RegisterBookPage;

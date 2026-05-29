@@ -139,3 +139,5 @@ export function BookListPage() {
     </BlockBookShell>
   );
 }
+
+export default BookListPage;
