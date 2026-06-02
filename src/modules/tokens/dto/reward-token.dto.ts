@@ -1,18 +1,29 @@
 import { Type } from 'class-transformer';
-import { IsEnum, IsMongoId, IsNumber, IsOptional, IsString, Min } from 'class-validator';
-import { ActivityType } from '../../../common/enums/activity-type.enum';
+import {
+  IsEthereumAddress,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class RewardTokenDto {
-  @IsMongoId()
-  userId: string;
+  @IsString()
+  @IsOptional()
+  userId?: string;
 
-  @IsEnum(ActivityType)
-  activityType: ActivityType;
+  @IsEthereumAddress()
+  studentAddress: string;
 
   @Type(() => Number)
   @IsNumber()
   @Min(1)
   amount: number;
+
+  @IsString()
+  @IsNotEmpty()
+  activityType: string;
 
   @IsOptional()
   @IsString()

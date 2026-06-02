@@ -38,17 +38,15 @@ type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
 };
 
-declare global {
-  interface Window {
-    ethereum?: EthereumProvider;
-  }
-}
-
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000/api';
 const escrowAbi = [
   'function lockFunds(uint256 tradeId, address seller) external payable returns (bool)',
   'function confirmDelivery(uint256 tradeId) external returns (bool)',
 ];
+
+function getEthereumProvider() {
+  return (window as Window & { ethereum?: EthereumProvider }).ethereum;
+}
 
 export function BookListPage() {
   const [books, setBooks] = useState<OnChainBook[]>([]);
@@ -124,12 +122,14 @@ export function BookListPage() {
   const connectWallet = async () => {
     setError('');
 
-    if (!window.ethereum) {
+    const ethereum = getEthereumProvider();
+
+    if (!ethereum) {
       setError('MetaMask 지갑을 먼저 설치하거나 브라우저에서 활성화하세요.');
       return '';
     }
 
-    const accounts = (await window.ethereum.request({ method: 'eth_requestAccounts' })) as string[];
+    const accounts = (await ethereum.request({ method: 'eth_requestAccounts' })) as string[];
     const account = accounts[0] ?? '';
     setWalletAddress(account);
     return account;
@@ -151,7 +151,9 @@ export function BookListPage() {
 
       const buyerAddress = walletAddress || (await connectWallet());
 
-      if (!buyerAddress || !window.ethereum) {
+      const ethereum = getEthereumProvider();
+
+      if (!buyerAddress || !ethereum) {
         throw new Error('구매자 지갑 연결이 필요합니다.');
       }
 
@@ -159,7 +161,7 @@ export function BookListPage() {
         throw new Error('판매자 지갑으로는 본인 도서를 구매할 수 없습니다.');
       }
 
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(ethereum);
       const signer = await provider.getSigner();
       const contract = new Contract(escrowContractAddress, escrowAbi, signer);
       const tradeId = Date.now();
@@ -205,7 +207,9 @@ export function BookListPage() {
     try {
       const buyerAddress = walletAddress || (await connectWallet());
 
-      if (!buyerAddress || !window.ethereum) {
+      const ethereum = getEthereumProvider();
+
+      if (!buyerAddress || !ethereum) {
         throw new Error('구매자 지갑 연결이 필요합니다.');
       }
 
@@ -213,7 +217,7 @@ export function BookListPage() {
         throw new Error('구매자 지갑만 수령 확인을 할 수 있습니다.');
       }
 
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(ethereum);
       const signer = await provider.getSigner();
       const contract = new Contract(escrow.escrowContractAddress, escrowAbi, signer);
       const tx = await contract.confirmDelivery(escrow.tradeId);

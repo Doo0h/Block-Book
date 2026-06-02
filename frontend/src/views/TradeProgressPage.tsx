@@ -8,12 +8,6 @@ type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
 };
 
-declare global {
-  interface Window {
-    ethereum?: EthereumProvider;
-  }
-}
-
 const tokenValueWon = 100;
 const steps = [
   '판매자 지갑 연결',
@@ -24,6 +18,10 @@ const steps = [
   '구매자 수령 확인',
   '판매자에게 정산',
 ];
+
+function getEthereumProvider() {
+  return (window as Window & { ethereum?: EthereumProvider }).ethereum;
+}
 
 export function TradeProgressPage() {
   const [walletAddress, setWalletAddress] = useState('');
@@ -42,12 +40,14 @@ export function TradeProgressPage() {
   const connectWallet = async () => {
     setError('');
 
-    if (!window.ethereum) {
+    const ethereum = getEthereumProvider();
+
+    if (!ethereum) {
       setError('MetaMask 지갑을 먼저 설치하거나 브라우저에서 활성화하세요.');
       return;
     }
 
-    const accounts = (await window.ethereum.request({ method: 'eth_requestAccounts' })) as string[];
+    const accounts = (await ethereum.request({ method: 'eth_requestAccounts' })) as string[];
     setWalletAddress(accounts[0] ?? '');
   };
 

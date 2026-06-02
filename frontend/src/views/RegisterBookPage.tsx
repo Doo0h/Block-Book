@@ -23,15 +23,13 @@ type EthereumProvider = {
   request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
 };
 
-declare global {
-  interface Window {
-    ethereum?: EthereumProvider;
-  }
-}
-
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000/api';
 const statusOptions = ['NEW', 'LIKE_NEW', 'GOOD', 'FAIR'];
 const bookRegistryAbi = ['function registerBook(uint256 _id, string _title, string _author, string _status) public'];
+
+function getEthereumProvider() {
+  return (window as Window & { ethereum?: EthereumProvider }).ethereum;
+}
 
 export function RegisterBookPage() {
   const [form, setForm] = useState({ id: '', title: '', author: '', status: 'GOOD' });
@@ -67,12 +65,14 @@ export function RegisterBookPage() {
   const connectWallet = async () => {
     setError('');
 
-    if (!window.ethereum) {
+    const ethereum = getEthereumProvider();
+
+    if (!ethereum) {
       setError('MetaMask 지갑을 먼저 설치하거나 브라우저에서 활성화하세요.');
       return;
     }
 
-    const accounts = (await window.ethereum.request({ method: 'eth_requestAccounts' })) as string[];
+    const accounts = (await ethereum.request({ method: 'eth_requestAccounts' })) as string[];
     setWalletAddress(accounts[0] ?? '');
   };
 
@@ -83,7 +83,9 @@ export function RegisterBookPage() {
     setError('');
 
     try {
-      if (!window.ethereum) {
+      const ethereum = getEthereumProvider();
+
+      if (!ethereum) {
         throw new Error('MetaMask 지갑이 필요합니다.');
       }
 
@@ -91,7 +93,7 @@ export function RegisterBookPage() {
         throw new Error('BookRegistry 계약주소를 불러오지 못했습니다.');
       }
 
-      const provider = new BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(ethereum);
       const signer = await provider.getSigner();
       const ownerAddress = await signer.getAddress();
       const contract = new Contract(contractAddress, bookRegistryAbi, signer);

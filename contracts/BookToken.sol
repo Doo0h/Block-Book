@@ -1,176 +1,210 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.4.24;
 
 contract BookToken {
     address public minter;
 
     string public tokenName = "BlockBook Reward Token";
     string public tokenSymbol = "BBT";
-    uint256 public tokenValueWon = 100;
 
-    uint256 public totalSupply;
-    uint256 public rewardCount;
-    uint256 public purchaseCount;
+    // 1 토큰당 할인 금액. 예: 1 BBT = 100원 할인
+    uint public tokenValueWon = 100;
+
+    uint public totalSupply;
+    uint public rewardCount;
+    uint public purchaseCount;
 
     struct Student {
         bool registered;
         string studentId;
-        uint256 totalEarned;
-        uint256 totalSpent;
-        uint256 lastUpdated;
+        uint totalEarned;
+        uint totalSpent;
+        uint lastUpdated;
     }
 
     struct RewardRecord {
         address student;
-        uint256 amount;
+        uint amount;
         string eventName;
-        uint256 createdAt;
+        uint createdAt;
     }
 
     struct PurchaseRecord {
         address buyer;
         string bookId;
-        uint256 bookPrice;
-        uint256 tokenUsed;
-        uint256 discountWon;
-        uint256 finalPrice;
-        uint256 createdAt;
+        uint bookPrice;
+        uint tokenUsed;
+        uint discountWon;
+        uint finalPrice;
+        uint createdAt;
     }
 
-    mapping(address => uint256) public balances;
-    mapping(address => Student) public students;
-    mapping(uint256 => RewardRecord) public rewardHistory;
-    mapping(uint256 => PurchaseRecord) public purchaseHistory;
+    // 학생 주소별 토큰 잔액 저장
+    mapping(address => uint) public balances;
 
-    event StudentRegistered(address indexed student, string studentId, uint256 time);
-    event TokenRewarded(address indexed student, uint256 amount, string eventName, uint256 balance, uint256 time);
-    event TokenUsed(
-        address indexed buyer,
-        string bookId,
-        uint256 tokenUsed,
-        uint256 discountWon,
-        uint256 finalPrice,
-        uint256 time
-    );
-    event TokenPolicyChanged(uint256 newTokenValueWon, uint256 time);
+    // 학생 주소별 등록 정보 저장
+    mapping(address => Student) public students;
+
+    // 보상 지급 내역 저장
+    mapping(uint => RewardRecord) public rewardHistory;
+
+    // 도서 구매 시 토큰 사용 내역 저장
+    mapping(uint => PurchaseRecord) public purchaseHistory;
+
+    event StudentRegistered(address student, string studentId, uint time);
+    event TokenRewarded(address student, uint amount, string eventName, uint balance, uint time);
+    event TokenUsed(address buyer, string bookId, uint tokenUsed, uint discountWon, uint finalPrice, uint time);
+    event TokenPolicyChanged(uint newTokenValueWon, uint time);
 
     modifier onlyAdmin() {
-        require(msg.sender == minter, "Only admin");
+        require(msg.sender == minter);
         _;
     }
 
-    modifier onlyRegistered(address student) {
-        require(students[student].registered, "Student is not registered");
+    modifier onlyRegistered(address _student) {
+        require(students[_student].registered == true);
         _;
     }
 
-    constructor() {
+    constructor() public {
         minter = msg.sender;
     }
 
-    function registerStudent(address student, string memory studentId) external onlyAdmin {
-        require(student != address(0), "Invalid student");
-        require(!students[student].registered, "Student already registered");
+    // 학생 등록
+    function registerStudent(address _student, string _studentId) public onlyAdmin {
+        require(_student != address(0));
+        require(students[_student].registered == false);
 
-        students[student] = Student({
-            registered: true,
-            studentId: studentId,
-            totalEarned: 0,
-            totalSpent: 0,
-            lastUpdated: block.timestamp
-        });
+        students[_student].registered = true;
+        students[_student].studentId = _studentId;
+        students[_student].totalEarned = 0;
+        students[_student].totalSpent = 0;
+        students[_student].lastUpdated = now;
 
-        emit StudentRegistered(student, studentId, block.timestamp);
+        emit StudentRegistered(_student, _studentId, now);
     }
 
-    function rewardToken(address student, uint256 amount, string memory eventName)
-        external
+    // 행사 참여 보상 지급
+    // 예: QR 인증이 완료된 학생에게 관리자가 토큰 지급
+    function rewardToken(address _student, uint _amount, string _eventName)
+        public
         onlyAdmin
-        onlyRegistered(student)
+        onlyRegistered(_student)
     {
-        require(amount > 0, "Amount must be greater than zero");
+        require(_amount > 0);
 
-        balances[student] += amount;
-        totalSupply += amount;
-        students[student].totalEarned += amount;
-        students[student].lastUpdated = block.timestamp;
+        // Solidity 0.4.24는 자동 오버플로우 검사가 없으므로 간단한 검증 추가
+        require(balances[_student] + _amount >= balances[_student]);
+        require(totalSupply + _amount >= totalSupply);
+
+        balances[_student] += _amount;
+        totalSupply += _amount;
+
+        students[_student].totalEarned += _amount;
+        students[_student].lastUpdated = now;
 
         rewardCount++;
-        rewardHistory[rewardCount] = RewardRecord({
-            student: student,
-            amount: amount,
-            eventName: eventName,
-            createdAt: block.timestamp
-        });
 
-        emit TokenRewarded(student, amount, eventName, balances[student], block.timestamp);
+        rewardHistory[rewardCount].student = _student;
+        rewardHistory[rewardCount].amount = _amount;
+        rewardHistory[rewardCount].eventName = _eventName;
+        rewardHistory[rewardCount].createdAt = now;
+
+        emit TokenRewarded(_student, _amount, _eventName, balances[_student], now);
     }
 
-    function previewDiscount(uint256 bookPrice, uint256 tokenAmount)
+    // 도서 구매 전 예상 할인 금액 확인
+    function previewDiscount(uint _bookPrice, uint _tokenAmount)
         public
         view
-        returns (uint256 discountWon, uint256 finalPrice)
+        returns (uint discountWon, uint finalPrice)
     {
-        require(bookPrice > 0, "Book price must be greater than zero");
+        require(_bookPrice > 0);
 
-        uint256 discount = tokenAmount * tokenValueWon;
+        uint discount = _tokenAmount * tokenValueWon;
 
-        if (discount >= bookPrice) {
-            return (bookPrice, 0);
+        if (_tokenAmount > 0) {
+            require(discount / _tokenAmount == tokenValueWon);
         }
 
-        return (discount, bookPrice - discount);
+        if (discount >= _bookPrice) {
+            return (_bookPrice, 0);
+        }
+
+        return (discount, _bookPrice - discount);
     }
 
-    function spendToken(uint256 bookPrice, uint256 tokenAmount, string memory bookId)
-        external
+    // 도서 구매 시 토큰 사용
+    function spendToken(uint _bookPrice, uint _tokenAmount, string _bookId)
+        public
         onlyRegistered(msg.sender)
-        returns (uint256 discountWon, uint256 finalPrice)
     {
-        require(bookPrice > 0, "Book price must be greater than zero");
-        require(tokenAmount > 0, "Token amount must be greater than zero");
-        require(balances[msg.sender] >= tokenAmount, "Insufficient token balance");
+        require(_bookPrice > 0);
+        require(_tokenAmount > 0);
+        require(balances[msg.sender] >= _tokenAmount);
 
-        (uint256 discount, uint256 finalPriceAmount) = previewDiscount(bookPrice, tokenAmount);
-        require(discount <= bookPrice, "Invalid discount");
+        uint discount = _tokenAmount * tokenValueWon;
 
-        balances[msg.sender] -= tokenAmount;
-        totalSupply -= tokenAmount;
-        students[msg.sender].totalSpent += tokenAmount;
-        students[msg.sender].lastUpdated = block.timestamp;
+        // 오버플로우 방지
+        require(discount / _tokenAmount == tokenValueWon);
+
+        // 할인 금액이 책 가격을 넘지 않도록 제한
+        require(discount <= _bookPrice);
+
+        uint finalPrice = _bookPrice - discount;
+
+        balances[msg.sender] -= _tokenAmount;
+
+        // 사용한 토큰은 재사용되지 않도록 소각 처리
+        totalSupply -= _tokenAmount;
+
+        students[msg.sender].totalSpent += _tokenAmount;
+        students[msg.sender].lastUpdated = now;
 
         purchaseCount++;
-        purchaseHistory[purchaseCount] = PurchaseRecord({
-            buyer: msg.sender,
-            bookId: bookId,
-            bookPrice: bookPrice,
-            tokenUsed: tokenAmount,
-            discountWon: discount,
-            finalPrice: finalPriceAmount,
-            createdAt: block.timestamp
-        });
 
-        emit TokenUsed(msg.sender, bookId, tokenAmount, discount, finalPriceAmount, block.timestamp);
-        return (discount, finalPriceAmount);
+        purchaseHistory[purchaseCount].buyer = msg.sender;
+        purchaseHistory[purchaseCount].bookId = _bookId;
+        purchaseHistory[purchaseCount].bookPrice = _bookPrice;
+        purchaseHistory[purchaseCount].tokenUsed = _tokenAmount;
+        purchaseHistory[purchaseCount].discountWon = discount;
+        purchaseHistory[purchaseCount].finalPrice = finalPrice;
+        purchaseHistory[purchaseCount].createdAt = now;
+
+        emit TokenUsed(msg.sender, _bookId, _tokenAmount, discount, finalPrice, now);
     }
 
-    function changeTokenValue(uint256 newTokenValueWon) external onlyAdmin {
-        require(newTokenValueWon > 0, "Token value must be greater than zero");
+    // 관리자만 토큰 할인 정책 변경 가능
+    function changeTokenValue(uint _newTokenValueWon) public onlyAdmin {
+        require(_newTokenValueWon > 0);
 
-        tokenValueWon = newTokenValueWon;
-        emit TokenPolicyChanged(newTokenValueWon, block.timestamp);
+        tokenValueWon = _newTokenValueWon;
+
+        emit TokenPolicyChanged(_newTokenValueWon, now);
     }
 
-    function getMyBalance() external view returns (uint256) {
+    // 내 토큰 잔액 확인
+    function getMyBalance() public view returns (uint) {
         return balances[msg.sender];
     }
 
-    function getStudentInfo(address student)
-        external
+    // 특정 학생의 토큰 정보 확인
+    function getStudentInfo(address _student)
+        public
         view
-        returns (bool registered, uint256 balance, uint256 totalEarned, uint256 totalSpent, uint256 lastUpdated)
+        returns (
+            bool registered,
+            uint balance,
+            uint totalEarned,
+            uint totalSpent,
+            uint lastUpdated
+        )
     {
-        Student memory item = students[student];
-        return (item.registered, balances[student], item.totalEarned, item.totalSpent, item.lastUpdated);
+        return (
+            students[_student].registered,
+            balances[_student],
+            students[_student].totalEarned,
+            students[_student].totalSpent,
+            students[_student].lastUpdated
+        );
     }
 }
