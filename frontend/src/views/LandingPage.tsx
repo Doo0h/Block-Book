@@ -1,29 +1,79 @@
+'use client';
+
 import { BookOpen, Coins, ShieldCheck } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { BlockBookShell } from '../components/blockbook-shell';
+
+type OnChainBook = {
+  _id: string;
+};
+
+type OnChainEscrow = {
+  status: string;
+  tokenUsed?: number;
+};
+
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3000/api';
 
 const features = [
   {
     icon: ShieldCheck,
     title: '안전한 에스크로 거래',
-    description: '결제 금액을 먼저 잠그고 수령 확인 후 정산합니다.',
+    description: '구매 금액을 먼저 예치하고 수령 확인 후 거래 상태를 확정합니다.',
   },
   {
     icon: BookOpen,
     title: '도서 이력 타임라인',
-    description: '거래 과정을 단계별로 확인할 수 있습니다.',
+    description: '등록, 구매, 수령 확인까지 온체인 기록과 앱 기록을 함께 확인합니다.',
   },
   {
     icon: Coins,
-    title: '토큰 보상',
-    description: '교내 활동 참여로 받은 토큰을 혜택에 사용할 수 있습니다.',
+    title: 'BBT 토큰 할인',
+    description: '등록된 학생 지갑은 보상 토큰을 받아 도서 구매 할인에 사용할 수 있습니다.',
   },
 ];
 
 export function LandingPage() {
+  const [books, setBooks] = useState<OnChainBook[]>([]);
+  const [escrows, setEscrows] = useState<OnChainEscrow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const [booksResponse, escrowsResponse] = await Promise.all([
+          fetch(`${apiBaseUrl}/books/on-chain`, { cache: 'no-store' }),
+          fetch(`${apiBaseUrl}/escrow/on-chain/list`, { cache: 'no-store' }),
+        ]);
+
+        const booksData = (await booksResponse.json()) as OnChainBook[];
+        const escrowsData = (await escrowsResponse.json()) as OnChainEscrow[];
+
+        setBooks(Array.isArray(booksData) ? booksData : []);
+        setEscrows(Array.isArray(escrowsData) ? escrowsData : []);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadStats();
+  }, []);
+
+  const stats = useMemo(() => {
+    const completedTrades = escrows.filter((escrow) => escrow.status === 'CONFIRMED' || escrow.status === 'RELEASED').length;
+    const totalTokenUsed = escrows.reduce((sum, escrow) => sum + (escrow.tokenUsed ?? 0), 0);
+
+    return [
+      { label: '등록 도서', value: isLoading ? '-' : `${books.length}권` },
+      { label: '안전 거래', value: isLoading ? '-' : `${completedTrades}/${escrows.length}건` },
+      { label: '사용 BBT', value: isLoading ? '-' : `${totalTokenUsed} BBT` },
+    ];
+  }, [books.length, escrows, isLoading]);
+
   return (
     <BlockBookShell
       title="전공서적 거래를 더 안전하고 간단하게"
-      subtitle="BlockBook은 대학생을 위한 전공서적 거래 앱입니다. 신뢰 가능한 거래 흐름과 쉬운 탐색 경험에 집중했습니다."
+      subtitle="BlockBook은 대학생을 위한 전공서적 거래 앱입니다. 도서 등록, 에스크로 거래, BBT 보상 흐름을 한 화면에서 다룹니다."
     >
       <section className="space-y-5">
         <div className="rounded-[32px] border border-[#dbe6f5] bg-[linear-gradient(180deg,#eef5ff_0%,#f8fbff_100%)] px-6 py-6 text-[#314158] shadow-card">
@@ -34,22 +84,16 @@ export function LandingPage() {
             사용성은 앞으로.
           </h2>
           <p className="mt-3 text-sm leading-6 text-[#6f829b]">
-            복잡한 기술 설명보다 거래 흐름이 명확하게 보이도록 설계한 앱형 첫 화면입니다.
+            실제 등록 도서와 에스크로 기록을 기반으로 현재 시장 상태를 보여줍니다.
           </p>
 
           <div className="mt-5 grid grid-cols-3 gap-3">
-            <div className="rounded-2xl border border-[#deebfb] bg-white/80 px-3 py-4">
-              <div className="text-lg font-semibold">1.2K</div>
-              <div className="mt-1 text-xs text-[#7b8ea8]">등록 도서</div>
-            </div>
-            <div className="rounded-2xl border border-[#deebfb] bg-white/80 px-3 py-4">
-              <div className="text-lg font-semibold">97%</div>
-              <div className="mt-1 text-xs text-[#7b8ea8]">안전 거래</div>
-            </div>
-            <div className="rounded-2xl border border-[#deebfb] bg-white/80 px-3 py-4">
-              <div className="text-lg font-semibold">18K</div>
-              <div className="mt-1 text-xs text-[#7b8ea8]">보상 토큰</div>
-            </div>
+            {stats.map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-[#deebfb] bg-white/80 px-3 py-4">
+                <div className="text-lg font-semibold">{stat.value}</div>
+                <div className="mt-1 text-xs text-[#7b8ea8]">{stat.label}</div>
+              </div>
+            ))}
           </div>
         </div>
 

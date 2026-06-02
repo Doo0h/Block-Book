@@ -24,6 +24,8 @@ type WalletStatus = {
   rpcUrl?: string;
   walletAddress?: string;
   contractAddress?: string;
+  escrowContractAddress?: string;
+  bookTokenContractAddress?: string;
   chainId?: string;
   blockNumber?: number;
   balanceEth?: number;
@@ -54,7 +56,7 @@ export function BlockBookShell({ title, subtitle, actions, showBackButton = fals
     } catch (error) {
       setWalletStatus({
         connected: false,
-        error: error instanceof Error ? error.message : 'Failed to load wallet status.',
+        error: error instanceof Error ? error.message : '지갑 상태를 불러오지 못했습니다.',
       });
     } finally {
       setIsWalletLoading(false);
@@ -116,6 +118,8 @@ export function BlockBookShell({ title, subtitle, actions, showBackButton = fals
                   <div>Block: {walletStatus.blockNumber ?? '-'}</div>
                   <div>RPC: {walletStatus.rpcUrl || '-'}</div>
                   <div>BookRegistry: {walletStatus.contractAddress || '-'}</div>
+                  <div>Escrow: {walletStatus.escrowContractAddress || '-'}</div>
+                  <div>BookToken: {walletStatus.bookTokenContractAddress || '-'}</div>
                   {walletStatus.error ? <div className="text-[#a34b4b]">Error: {walletStatus.error}</div> : null}
                 </div>
               ) : null}
@@ -126,7 +130,6 @@ export function BlockBookShell({ title, subtitle, actions, showBackButton = fals
             <div className="text-[22px] font-semibold leading-8 tracking-tight text-[#314158]">{title}</div>
             {subtitle ? <p className="mt-2 text-sm leading-6 text-[#6f829b]">{subtitle}</p> : null}
           </div>
-
         </header>
 
         <main className="flex-1 px-5 pb-28 pt-5">{children}</main>

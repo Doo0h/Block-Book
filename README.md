@@ -1,234 +1,188 @@
-# Block-Book
+# BlockBook
 
-블록체인 기반 대학 중고 전공서적 거래 프로젝트입니다.  
-현재 `dooyoung` 브랜치에서는 Remix로 배포한 `BookRegistry.sol`을 Geth 사설망에 연결하고, 프론트에서 입력한 도서 정보를 백엔드가 컨트랙트에 기록하는 흐름을 사용합니다.
+BlockBook은 대학생 전공서적 거래를 위한 블록체인 기반 중고 거래 프로젝트입니다. 도서 등록, 에스크로 거래, BBT 보상 토큰, 학생 지갑 기반 마이페이지를 하나의 흐름으로 연결합니다.
 
-## 핵심 흐름
+## 주요 기능
 
-```text
-프론트 /books/register
-→ POST /api/books/on-chain
-→ NestJS 백엔드
-→ Geth RPC http://127.0.0.1:8545
-→ BookRegistry.registerBook(...)
-→ /books에서 등록된 도서 확인
-```
+- MetaMask 지갑 기반 도서 등록
+- Geth 사설망과 Remix/배포 스크립트를 이용한 스마트 컨트랙트 연동
+- BookRegistry를 통한 온체인 도서 등록
+- BookEscrow를 통한 구매 대금 예치와 수령 확인
+- BookToken 기반 BBT 학생 등록, 보상 지급, 토큰 사용
+- 도서 구매 시 BBT 할인 미리보기 및 사용 내역 저장
+- 등록된 학생 지갑 기준 마이페이지 BBT 잔액, 누적 지급, 누적 사용, 거래 현황 표시
+- Tailscale을 이용한 다른 PC와의 사설망 시연
 
 ## 기술 스택
 
-- Backend: NestJS, TypeScript, MongoDB, Mongoose
-- Frontend: Next.js, React, Tailwind CSS
-- Blockchain: Solidity, Geth private network, Remix, Ethers.js
+- Backend: NestJS, TypeScript, MongoDB, Mongoose, Ethers.js
+- Frontend: Next.js, React, Tailwind CSS, MetaMask
+- Blockchain: Solidity, Geth private network, Remix
+- Network: Tailscale
 
-## 1. Geth 사설망 실행
+## 스마트 컨트랙트
 
-터미널을 열고 프로젝트 상위 폴더로 이동합니다.
+```text
+contracts/BookRegistry.sol
+contracts/Escrow_scchoi.sol
+contracts/BookToken.sol
+```
 
-```bat
+`BookRegistry`와 `BookEscrow`는 Remix에서 배포할 수 있습니다. `BookToken`은 Solidity 0.8.20 기준으로 정리되어 있으며, Remix 배포가 불안정한 경우 아래 스크립트로 배포할 수 있습니다.
+
+```powershell
+node scripts\deploy-book-token.js
+```
+
+배포 후 나온 컨트랙트 주소는 `.env`와 `frontend/.env.local`에 반영해야 합니다.
+
+## 환경 변수
+
+루트 `.env` 예시:
+
+```env
+PORT=3000
+MONGODB_URI=mongodb://localhost:27017/blockchain-book-market
+BLOCKCHAIN_RPC_URL=http://127.0.0.1:8545
+BOOK_REGISTRY_CONTRACT_ADDRESS=0x...
+ESCROW_CONTRACT_ADDRESS=0x...
+BOOK_TOKEN_CONTRACT_ADDRESS=0x...
+PLATFORM_WALLET_ADDRESS=0x...
+PLATFORM_PRIVATE_KEY=replace_with_private_key
+```
+
+프론트 `frontend/.env.local` 예시:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
+NEXT_PUBLIC_BLOCKCHAIN_RPC_URL=http://127.0.0.1:8545
+NEXT_PUBLIC_EXPECTED_CHAIN_ID=1337
+NEXT_PUBLIC_EXPECTED_CHAIN_NAME=BlockBook
+NEXT_PUBLIC_BOOK_TOKEN_CONTRACT_ADDRESS=0x...
+```
+
+Tailscale로 다른 PC와 시연할 때는 `localhost` 대신 관리자 PC의 Tailscale IP를 사용합니다.
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://100.xxx.xxx.xxx:3000/api
+NEXT_PUBLIC_BLOCKCHAIN_RPC_URL=http://100.xxx.xxx.xxx:8545
+```
+
+## Geth 사설망 실행
+
+관리자 PC에서 Geth 사설망을 실행하고 채굴을 켜야 합니다.
+
+```powershell
 cd C:\Users\SAMSUNG\OneDrive\Desktop\blockbook
+
+geth --datadir private_net_1337 --networkid 1337 --http --http.addr 127.0.0.1 --http.port 8545 --http.api eth,net,web3,personal,miner --http.corsdomain "*" --http.vhosts "*" --allow-insecure-unlock --unlock 0x관리자지갑주소 --password private_net_1337/password.txt --mine --miner.etherbase 0x관리자지갑주소
 ```
 
-Geth를 실행합니다.
+Tailscale을 통해 외부 PC와 시연할 때는 `--http.addr`을 관리자 PC의 Tailscale IP로 바꿉니다.
 
-```bat
-geth --networkid 10 --nodiscover --datadir private_net --http --http.addr "127.0.0.1" --http.port "8545" --http.corsdomain "https://remix.ethereum.org" --http.vhosts "*" --http.api "eth,net,web3,personal" --allow-insecure-unlock --unlock "0x33d33143fa9e807C05FD65f2843fFC4546536A0c" --password private_net\password.txt console
-```
-
-Geth 콘솔에서 채굴 계정을 지정하고 채굴을 시작합니다.
-
-```js
-miner.setEtherbase("0x33d33143fa9e807C05FD65f2843fFC4546536A0c")
-miner.start(1)
+```powershell
+geth --datadir private_net_1337 --networkid 1337 --http --http.addr 100.xxx.xxx.xxx --http.port 8545 --http.api eth,net,web3,personal,miner --http.corsdomain "*" --http.vhosts "*" --authrpc.addr 100.xxx.xxx.xxx --authrpc.port 8551 --allow-insecure-unlock --unlock 0x관리자지갑주소 --password private_net_1337/password.txt --mine --miner.etherbase 0x관리자지갑주소
 ```
 
 상태 확인:
 
-```js
+```powershell
+geth attach http://127.0.0.1:8545
+```
+
+```javascript
+eth.chainId()
+eth.mining
 eth.blockNumber
-eth.getBalance("0x33d33143fa9e807C05FD65f2843fFC4546536A0c")
+miner.start(1)
 ```
 
-채굴을 멈추고 싶을 때:
+`0x539`는 chain ID 1337을 의미합니다.
 
-```js
-miner.stop()
-```
+## 백엔드 실행
 
-## 2. Remix에서 BookRegistry 배포
-
-1. `https://remix.ethereum.org` 접속
-2. `contracts/BookRegistry.sol` 파일 업로드 또는 내용 붙여넣기
-3. Solidity Compiler 버전 `0.8.19` 선택
-4. `BookRegistry.sol` 컴파일
-5. Deploy & Run Transactions에서 Environment를 `Custom - External HTTP Provider`로 선택
-6. Provider URL 입력
-
-```text
-http://127.0.0.1:8545
-```
-
-7. Account가 아래 주소인지 확인
-
-```text
-0x33d33143fa9e807C05FD65f2843fFC4546536A0c
-```
-
-8. `BookRegistry` Deploy
-9. Deployed Contracts에 나온 컨트랙트 주소를 `.env`에 입력
-
-현재 사용 중인 배포 주소:
-
-```env
-BOOK_REGISTRY_CONTRACT_ADDRESS=0x4a0C9630c731455Da9C6a9f7dBe4B62A2afd0708
-```
-
-## 3. 백엔드 환경 변수
-
-`Block-Book-github/.env` 예시:
-
-```env
-MONGODB_URI=mongodb://localhost:27017/blockchain-book-market
-PORT=3000
-BLOCKCHAIN_RPC_URL=http://127.0.0.1:8545
-BOOK_REGISTRY_CONTRACT_ADDRESS=0x4a0C9630c731455Da9C6a9f7dBe4B62A2afd0708
-ESCROW_CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000
-PLATFORM_WALLET_ADDRESS=0x33d33143fa9e807C05FD65f2843fFC4546536A0c
-PLATFORM_PRIVATE_KEY=replace_with_private_key
-```
-
-## 4. 백엔드 실행
-
-다른 터미널에서 실행합니다.
-
-```bat
+```powershell
 cd C:\Users\SAMSUNG\OneDrive\Desktop\blockbook\Block-Book-github
-npx tsc -p tsconfig.build.json
-node dist/main.js
+npm install
+npm run start:dev
 ```
 
-백엔드 주소:
+기본 API 주소:
 
 ```text
 http://localhost:3000/api
 ```
 
-도서 온체인 등록 API:
+주요 API:
 
 ```text
+GET  /api/books/on-chain
 POST /api/books/on-chain
+GET  /api/books/wallet/status
+GET  /api/escrow/on-chain/list
+POST /api/escrow/on-chain/lock
+POST /api/escrow/on-chain/:tradeId/confirm
+POST /api/tokens/register-student
+POST /api/tokens/reward
+GET  /api/tokens/student/:studentAddress
+GET  /api/tokens/preview-discount
 ```
 
-등록된 온체인 도서 목록 API:
+## 프론트엔드 실행
+
+```powershell
+cd C:\Users\SAMSUNG\OneDrive\Desktop\blockbook\Block-Book-github
+npm --prefix frontend install
+npm --prefix frontend run dev -- -p 3001
+```
+
+다른 PC에서 접속하게 하려면 다음처럼 실행합니다.
+
+```powershell
+npm --prefix frontend run dev -- -H 0.0.0.0 -p 3001
+```
+
+접속 주소:
 
 ```text
-GET /api/books/on-chain
-```
-
-지갑 상태 확인 API:
-
-```text
-GET /api/books/wallet/status
-```
-
-API 테스트:
-
-```bat
-curl -X POST http://localhost:3000/api/books/on-chain ^
--H "Content-Type: application/json" ^
--d "{\"id\":101,\"title\":\"Operating System Concepts\",\"author\":\"Abraham Silberschatz\",\"status\":\"GOOD\"}"
-```
-
-주의: `id`는 중복되면 안 됩니다. 같은 `id`를 다시 등록하면 컨트랙트에서 `Book already exists`로 실패합니다.
-
-## 5. 프론트 실행
-
-프론트는 백엔드와 포트가 겹치지 않게 `3001`로 실행합니다.
-
-```bat
-cd C:\Users\SAMSUNG\OneDrive\Desktop\blockbook\Block-Book-github\frontend
-npm run dev -- -p 3001
-```
-
-프론트 주소:
-
-```text
+http://localhost:3001
 http://localhost:3001/books
-```
-
-## 6. 프론트 사용 방법
-
-### 책 등록
-
-```text
 http://localhost:3001/books/register
+http://localhost:3001/token-test
+http://localhost:3001/mypage
 ```
 
-예시 입력값:
+## 사용 흐름
+
+1. 관리자 PC에서 Geth, 백엔드, 프론트를 실행합니다.
+2. MetaMask에 BlockBook 네트워크를 추가합니다.
+3. 판매자는 `/books/register`에서 도서 ID, 제목, 저자, 가격, 상태를 입력하고 등록합니다.
+4. 관리자는 `/token-test`에서 학생 지갑을 등록하고 BBT를 지급합니다.
+5. 학생은 `/mypage`에서 등록된 지갑의 BBT 잔액과 거래 정보를 확인합니다.
+6. 학생은 `/books`에서 사용할 BBT 수량을 입력하고 할인 미리보기 후 구매합니다.
+7. 구매자는 수령 후 `/books`에서 수령 확인을 진행합니다.
+
+## Tailscale 시연
+
+관리자 PC의 Tailscale IP가 `100.79.164.110`이라면 상대방은 다음 주소로 접속합니다.
 
 ```text
-_id: 102
-_title: Operating System Concepts
-_author: Abraham Silberschatz
-_status: GOOD
+http://100.79.164.110:3001
 ```
 
-등록 성공 시 화면에 `Book ID`, `Title`, `Author`, `Status`, `Tx Hash`가 표시됩니다.
-
-### 등록된 도서 확인
+상대방 MetaMask 네트워크:
 
 ```text
-http://localhost:3001/books
+Network Name: BlockBook
+RPC URL: http://100.79.164.110:8545
+Chain ID: 1337
+Currency Symbol: ETH
 ```
 
-도서 페이지에서 등록된 도서 목록을 확인할 수 있습니다.  
-검색창에는 `Book ID`, 도서명, 저자, 상태값을 입력해 등록된 도서를 찾을 수 있습니다.
+상대방 PC에는 DB나 백엔드가 필요하지 않습니다. 브라우저, MetaMask, Tailscale만 있으면 됩니다.
 
-### 지갑 상태 확인
+## 참고
 
-상단 `지갑` 버튼을 누르면 다음 정보를 확인할 수 있습니다.
-
-- 연결 상태
-- 플랫폼 지갑 주소
-- 잔액
-- Chain ID
-- 현재 블록 번호
-- RPC 주소
-- BookRegistry 컨트랙트 주소
-
-## 7. Remix에서 등록값 확인
-
-프론트에서 등록한 뒤 나온 `Book ID`를 Remix에서 조회합니다.
-
-```text
-Deployed Contracts
-→ BookRegistry
-→ books
-→ Book ID 입력
-```
-
-예를 들어 `Book ID`가 `102`이면 `books(102)`를 조회합니다.
-
-컨트랙트에 저장되는 구조:
-
-```solidity
-struct Book {
-    string title;
-    string author;
-    string currentStatus;
-    address currentOwner;
-    uint lastPrice;
-    uint lastUpdated;
-    bool exists;
-}
-```
-
-현재 `registerBook`에서는 프론트 입력값 중 `_id`, `_title`, `_author`, `_status`를 사용합니다.  
-`currentOwner`는 트랜잭션을 보낸 백엔드 플랫폼 지갑 주소로 저장되고, `lastUpdated`는 블록 타임스탬프로 저장됩니다.
-
-## 추가 문서
-
-더 짧은 실행 순서는 아래 문서에도 정리되어 있습니다.
-
-```text
-docs/blockchain-runbook.md
-```
+- `.env`, `frontend/.env.local`, geth 데이터, node_modules는 Git에 올리지 않습니다.
+- 다른 체인 ID로 새 사설망을 만들면 컨트랙트 주소는 다시 배포해야 합니다.
+- MetaMask pending이 오래 지속되면 geth 콘솔에서 `miner.start(1)`을 실행합니다.

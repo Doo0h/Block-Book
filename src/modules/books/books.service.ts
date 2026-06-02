@@ -60,6 +60,7 @@ export class BooksService {
       blockchainBookId: registerBookOnChainDto.id,
       title: registerBookOnChainDto.title,
       author: registerBookOnChainDto.author,
+      price: registerBookOnChainDto.price,
       status: registerBookOnChainDto.status,
       blockchainTxHash,
       contractAddress: registerBookOnChainDto.contractAddress ?? contractAddress,

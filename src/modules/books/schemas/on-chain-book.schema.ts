@@ -14,6 +14,9 @@ export class OnChainBook {
   @Prop({ required: true, trim: true })
   author: string;
 
+  @Prop({ required: true, min: 1, default: 15000 })
+  price: number;
+
   @Prop({ required: true, trim: true })
   status: string;
 

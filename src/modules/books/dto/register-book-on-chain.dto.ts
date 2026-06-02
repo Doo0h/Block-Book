@@ -15,6 +15,11 @@ export class RegisterBookOnChainDto {
   @IsNotEmpty()
   author: string;
 
+  @Type(() => Number)
+  @IsNumber()
+  @Min(1)
+  price: number;
+
   @IsString()
   @IsNotEmpty()
   status: string;

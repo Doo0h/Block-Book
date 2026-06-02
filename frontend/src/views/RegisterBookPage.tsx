@@ -4,11 +4,13 @@ import { BrowserProvider, Contract } from 'ethers';
 import { CheckCircle2, Loader2, PlugZap, Send } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { BlockBookShell } from '../components/blockbook-shell';
+import { switchOrAddExpectedNetwork } from '../lib/metamask';
 
 type RegisterBookResponse = {
   blockchainBookId?: number;
   title?: string;
   author?: string;
+  price?: number;
   status?: string;
   blockchainTxHash?: string;
   contractAddress?: string;
@@ -32,7 +34,7 @@ function getEthereumProvider() {
 }
 
 export function RegisterBookPage() {
-  const [form, setForm] = useState({ id: '', title: '', author: '', status: 'GOOD' });
+  const [form, setForm] = useState({ id: '', title: '', author: '', price: '15000', status: 'GOOD' });
   const [walletAddress, setWalletAddress] = useState('');
   const [contractAddress, setContractAddress] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,11 +52,11 @@ export function RegisterBookPage() {
       }
     };
 
-    loadContractAddress();
+    void loadContractAddress();
   }, []);
 
   const canSubmit = useMemo(
-    () => form.id && form.title && form.author && form.status && walletAddress && contractAddress,
+    () => form.id && form.title && form.author && form.price && form.status && walletAddress && contractAddress,
     [contractAddress, form, walletAddress],
   );
 
@@ -72,8 +74,19 @@ export function RegisterBookPage() {
       return;
     }
 
+    await switchOrAddExpectedNetwork();
     const accounts = (await ethereum.request({ method: 'eth_requestAccounts' })) as string[];
     setWalletAddress(accounts[0] ?? '');
+  };
+
+  const getPrice = () => {
+    const price = Number(form.price);
+
+    if (!Number.isInteger(price) || price <= 0) {
+      throw new Error('책 가격은 1원 이상 숫자로 입력하세요.');
+    }
+
+    return price;
   };
 
   const submitBook = async (event: FormEvent<HTMLFormElement>) => {
@@ -90,9 +103,10 @@ export function RegisterBookPage() {
       }
 
       if (!contractAddress) {
-        throw new Error('BookRegistry 계약주소를 불러오지 못했습니다.');
+        throw new Error('BookRegistry 계약 주소를 불러오지 못했습니다.');
       }
 
+      const price = getPrice();
       const provider = new BrowserProvider(ethereum);
       const signer = await provider.getSigner();
       const ownerAddress = await signer.getAddress();
@@ -108,6 +122,7 @@ export function RegisterBookPage() {
           id: Number(form.id),
           title: form.title,
           author: form.author,
+          price,
           status: form.status,
           blockchainTxHash: tx.hash,
           contractAddress,
@@ -134,7 +149,7 @@ export function RegisterBookPage() {
   return (
     <BlockBookShell
       title="책 등록"
-      subtitle="판매자 지갑으로 BookRegistry에 등록하고, 등록 결과를 MongoDB에 저장합니다."
+      subtitle="판매자 지갑으로 BookRegistry에 등록하고, 가격을 포함한 등록 정보를 앱 DB에 저장합니다."
       showBackButton
       actions={
         <button
@@ -171,36 +186,25 @@ export function RegisterBookPage() {
             <div className="mt-1 text-xs text-[#7b8ea8]">같은 ID는 같은 컨트랙트에서 다시 등록할 수 없습니다.</div>
           </div>
 
-          <input
-            value={form.id}
-            onChange={(event) => updateForm('id', event.target.value)}
-            placeholder="_id 예: 10"
-            inputMode="numeric"
-            className="w-full rounded-2xl border border-[#dbe6f5] bg-[#f7faff] px-4 py-3 text-sm outline-none focus:border-[#8fb4ff]"
-          />
-          <input
-            value={form.title}
-            onChange={(event) => updateForm('title', event.target.value)}
-            placeholder="_title 예: Operating System Concepts"
-            className="w-full rounded-2xl border border-[#dbe6f5] bg-[#f7faff] px-4 py-3 text-sm outline-none focus:border-[#8fb4ff]"
-          />
-          <input
-            value={form.author}
-            onChange={(event) => updateForm('author', event.target.value)}
-            placeholder="_author 예: Abraham Silberschatz"
-            className="w-full rounded-2xl border border-[#dbe6f5] bg-[#f7faff] px-4 py-3 text-sm outline-none focus:border-[#8fb4ff]"
-          />
-          <select
-            value={form.status}
-            onChange={(event) => updateForm('status', event.target.value)}
-            className="w-full rounded-2xl border border-[#dbe6f5] bg-[#f7faff] px-4 py-3 text-sm outline-none focus:border-[#8fb4ff]"
-          >
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
+          <Input label="Book ID" value={form.id} onChange={(value) => updateForm('id', value)} placeholder="예: 101" inputMode="numeric" />
+          <Input label="제목" value={form.title} onChange={(value) => updateForm('title', value)} placeholder="예: 운영체제" />
+          <Input label="저자" value={form.author} onChange={(value) => updateForm('author', value)} placeholder="예: 김교수" />
+          <Input label="가격" value={form.price} onChange={(value) => updateForm('price', value)} placeholder="예: 18000" inputMode="numeric" />
+
+          <label className="block">
+            <span className="text-xs font-medium text-[#7b8ea8]">상태</span>
+            <select
+              value={form.status}
+              onChange={(event) => updateForm('status', event.target.value)}
+              className="mt-1 w-full rounded-2xl border border-[#dbe6f5] bg-[#f7faff] px-4 py-3 text-sm outline-none focus:border-[#8fb4ff]"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </label>
         </form>
 
         {result ? (
@@ -213,6 +217,7 @@ export function RegisterBookPage() {
               <div>Book ID: {result.blockchainBookId}</div>
               <div>Title: {result.title}</div>
               <div>Author: {result.author}</div>
+              <div>Price: {result.price?.toLocaleString() ?? '-'}원</div>
               <div>Status: {result.status}</div>
               <div>Owner: {result.ownerAddress || '-'}</div>
               <div>Contract: {result.contractAddress || '-'}</div>
@@ -228,5 +233,32 @@ export function RegisterBookPage() {
         ) : null}
       </section>
     </BlockBookShell>
+  );
+}
+
+function Input({
+  label,
+  value,
+  onChange,
+  placeholder,
+  inputMode,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  inputMode?: 'numeric';
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-medium text-[#7b8ea8]">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        inputMode={inputMode}
+        className="mt-1 w-full rounded-2xl border border-[#dbe6f5] bg-[#f7faff] px-4 py-3 text-sm outline-none focus:border-[#8fb4ff]"
+      />
+    </label>
   );
 }
